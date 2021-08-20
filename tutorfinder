@@ -1,0 +1,350 @@
+package onlinetutor.onlinetutorapp;
+import android.app.ProgressDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.support.annotation.NonNull;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.util.Patterns;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+public class StartActivity extends AppCompatActivity {
+ //Firebase
+ private FirebaseAuth firebaseAuth;
+ private DatabaseReference mRootRef;
+ //Android
+ private Button buttonRegister,buttonLogin;
+ private EditText editTextEmail, editTextPassword,editTextEmail1,
+editTextPassword1;
+ private TextView
+textViewContactUs,textViewForgotPassword,textViewSignUp,textViewSignin;
+ private ProgressDialog progressDialog,progressDialog1,progressDialog2;
+ private ViewPager viewPagerSlides;
+ private ProgressBar progress;
+ @Override
+ protected void onCreate(Bundle savedInstanceState) {
+ super.onCreate(savedInstanceState);
+ setContentView(R.layout.activity_start);
+ //Firebase
+ firebaseAuth=FirebaseAuth.getInstance();
+ mRootRef= FirebaseDatabase.getInstance().getReference();
+//Android
+ progress=(ProgressBar)findViewById(R.id.progress);
+ //Register
+ buttonRegister = (Button) findViewById(R.id.buttonRegister);
+ editTextEmail = (EditText) findViewById(R.id.editTextEmail);
+ editTextPassword = (EditText) findViewById(R.id.editTextPassword);
+ textViewSignin=(TextView)findViewById(R.id.textViewSignin);
+ //Login
+ buttonLogin = (Button) findViewById(R.id.buttonLogin);
+ editTextEmail1 = (EditText) findViewById(R.id.editTextEmail1);
+ editTextPassword1 = (EditText) findViewById(R.id.editTextPassword1);
+ textViewForgotPassword=(TextView)findViewById(R.id.textViewForgotPassword);
+ textViewSignUp=(TextView)findViewById(R.id.textViewSignUp);
+//Slides
+ viewPagerSlides=(ViewPager)findViewById(R.id.viewPagerSlides);
+ ViewPagerSlidesAdapter viewPagerSlidesAdapter = new
+ViewPagerSlidesAdapter(this);
+ viewPagerSlides.setAdapter(viewPagerSlidesAdapter);
+ Timer timer=new Timer();
+ timer.scheduleAtFixedRate(new MyTimerTask(),1000,2000);
+ //Contact Us
+ textViewContactUs=(TextView)findViewById(R.id.textViewContactUs);
+ progressDialog=new ProgressDialog(this);
+ progressDialog.setTitle("Logging you in");
+ progressDialog.setMessage("Please Wait...");
+ progressDialog.setCanceledOnTouchOutside(false);
+ //Register
+ progressDialog1=new ProgressDialog(this);
+ progressDialog1.setTitle("Registering User...");
+ progressDialog1.setMessage("Please Wait...");
+ progressDialog1.setCanceledOnTouchOutside(false);
+ //Login
+ progressDialog2=new ProgressDialog(this);
+ progressDialog2.setTitle("Logging you in");
+ progressDialog2.setMessage("Please Wait...");
+ progressDialog2.setCanceledOnTouchOutside(false);
+ textViewSignUp.setOnClickListener(new View.OnClickListener() {
+ @Override
+ public void onClick(View view) {
+ progress.setVisibility(View.VISIBLE);
+ editTextEmail1.setVisibility(View.GONE);
+ editTextPassword1.setVisibility(View.GONE);
+ buttonLogin.setVisibility(View.GONE);
+ textViewSignUp.setVisibility(View.GONE);
+ textViewForgotPassword.setVisibility(View.GONE);
+ editTextEmail.setVisibility(View.VISIBLE);
+ editTextPassword.setVisibility(View.VISIBLE);
+ buttonRegister.setVisibility(View.VISIBLE);
+ textViewSignin.setVisibility(View.VISIBLE);
+ progress.setVisibility(View.GONE);
+ }
+ });
+ textViewSignin.setOnClickListener(new View.OnClickListener() {
+ @Override
+ public void onClick(View view) {
+ progress.setVisibility(View.VISIBLE);
+ editTextEmail.setVisibility(View.GONE);
+ editTextPassword.setVisibility(View.GONE);
+ buttonRegister.setVisibility(View.GONE);
+ textViewSignin.setVisibility(View.GONE);
+ editTextEmail1.setVisibility(View.VISIBLE);
+ editTextPassword1.setVisibility(View.VISIBLE);
+ buttonLogin.setVisibility(View.VISIBLE);
+ textViewSignUp.setVisibility(View.VISIBLE);
+ textViewForgotPassword.setVisibility(View.VISIBLE);
+ progress.setVisibility(View.GONE);
+ }
+ });
+ buttonRegister.setOnClickListener(new View.OnClickListener() {
+ @Override
+ public void onClick(View view) {
+ registerUser();
+ }
+ });
+ buttonLogin.setOnClickListener(new View.OnClickListener() {
+ @Override
+ public void onClick(View view) {
+ loginUser();
+ }
+ });
+ textViewForgotPassword.setOnClickListener(new View.OnClickListener() {
+ @Override
+ public void onClick(View view) {
+ //finish();
+startActivity(new
+Intent(StartActivity.this,ForgotPasswordActivity.class));
+ }
+ });
+ textViewContactUs.setOnClickListener(new View.OnClickListener() {
+ @Override
+ public void onClick(View view) {
+ startActivity(new
+Intent(StartActivity.this,ContactActivity.class));
+ }
+ });
+ }
+//Login User
+ private void loginUser() {
+ String email=editTextEmail1.getText().toString().trim();
+ String password=editTextPassword1.getText().toString().trim();
+ //validations
+ if(email.isEmpty()) {
+ editTextEmail1.setError("Email is required!");
+ editTextEmail1.requestFocus();
+ return;
+ }
+ if(!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+ editTextEmail1.setError("Please enter a valid email!");
+ editTextEmail1.requestFocus();
+ return;
+ }
+ if(password.isEmpty()) {
+ editTextPassword1.setError("Password is required!");
+ editTextPassword1.requestFocus();
+ return;
+ }
+ if(password.length()<6){
+ editTextPassword1.setError("Minimum length of password should be 6");
+ editTextPassword1.requestFocus();
+ return;
+ }
+ //if everything is ok
+ progressDialog2.show();
+ firebaseAuth.signInWithEmailAndPassword(email,password)
+ .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+ @Override
+public void onComplete(@NonNull Task<AuthResult> task) {
+ progressDialog2.dismiss();
+ if(task.isSuccessful())
+{
+ //start Profile Activity
+finish();
+Intent intent=new
+Intent(getApplicationContext(),Home.class);
+ intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+Intent.FLAG_ACTIVITY_CLEAR_TOP);
+ startActivity(intent);
+ }
+ else
+ {
+ //Wrong email or Password
+Toast.makeText(getApplicationContext(),task.getException().getMessage(),Toast.LENGT
+H_SHORT).show();
+ editTextPassword.setText("");
+ }
+ }
+ });
+ }
+//Registering User
+ private void registerUser() {
+ final String email = editTextEmail.getText().toString().trim();
+ String password = editTextPassword.getText().toString().trim();
+ //validations
+ if(email.isEmpty()) {
+ editTextEmail.setError("Email is required!");
+ editTextEmail.requestFocus();
+ return;
+ }
+ if(!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+ editTextEmail.setError("Please enter a valid email!");
+ editTextEmail.requestFocus();
+ return;
+ }
+ if(password.isEmpty()) {
+ editTextPassword.setError("Password is required!");
+ editTextPassword.requestFocus();
+ return;
+ }
+ if(password.length()<6){
+ editTextPassword.setError("Minimum length of password should be 6");
+ editTextPassword.requestFocus();
+ return;
+ }
+ progressDialog1.show();
+ firebaseAuth.createUserWithEmailAndPassword(email,password)
+ .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+ @Override
+ public void onComplete(@NonNull Task<AuthResult> task) {
+ progressDialog1.dismiss();
+if(task.isSuccessful())
+{
+ CharSequence options[]=new
+CharSequence[]{"Student","Teacher"};
+ AlertDialog.Builder builder=new
+AlertDialog.Builder(StartActivity.this);
+ builder.setTitle("Select your Profile");
+builder.setCancelable(false);
+ builder.setItems(options, new
+DialogInterface.OnClickListener() {
+ @Override
+public void onClick(DialogInterface 
+dialogInterface, int i) {
+ if(i==0){
+ //start Profile student
+HashMap<String,String> studentMap=new
+HashMap<>();
+studentMap.put("name","");
+ studentMap.put("address","");
+ studentMap.put("locality","");
+ studentMap.put("city","");
+ studentMap.put("phone","");
+ studentMap.put("sc","");
+
+studentMap.put("picUrl","https://firebasestorage.googleapis.com/v0/b/tutorfinder5da34.appspot.com/o/profileImageStudent%2Fdefault.png?alt=media&token=b3edf519-
+d33a-47a4-91f9-ab7bfa601a29");
+
+mRootRef.child("Students").child(firebaseAuth.getCurrentUser().getUid()).setValue(s
+tudentMap);
+ finish();
+Intent intent=new
+Intent(getApplicationContext(),ProfileStudent.class);
+
+intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+ startActivity(intent);
+ }else if(i==1){
+ //start profile Teacher
+HashMap<String,String> teacherMap=new
+HashMap<>();
+ teacherMap.put("name","");
+ teacherMap.put("address","");
+ teacherMap.put("locality","");
+ teacherMap.put("city","");
+ teacherMap.put("phone","");
+ teacherMap.put("qualifications","");
+ teacherMap.put("experience","");
+ teacherMap.put("fees","");
+ teacherMap.put("subject","");
+ teacherMap.put("message","");
+ teacherMap.put("sub_city_loc","");
+
+teacherMap.put("picUrl","https://firebasestorage.googleapis.com/v0/b/tutorfinder5da34.appspot.com/o/profileImageTeacher%2Fdefault.png?alt=media&token=ebcdbf5a0b8f-4f55-b4db-3a04577862dd");
+
+mRootRef.child("Teachers").child(firebaseAuth.getCurrentUser().getUid()).setValue(t
+eacherMap);
+ finish();
+Intent intent=new
+Intent(getApplicationContext(),ProfileTeacher.class);
+
+intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+ startActivity(intent);
+ }
+ }
+ });
+builder.show();
+ }
+else
+{
+ if(task.getException() instanceof
+FirebaseAuthUserCollisionException){
+ Toast.makeText(getApplicationContext(), "Email
+Already exists!", Toast.LENGTH_SHORT).show();
+ editTextPassword.setText("");
+ }
+ else {
+ Toast.makeText(getApplicationContext(), 
+ task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+ }
+ }
+ }
+ });
+ }
+ public class MyTimerTask extends TimerTask {
+ @Override
+ public void run() {
+ StartActivity.this.runOnUiThread(new Runnable() {
+ @Override
+public void run() {
+ if(viewPagerSlides.getCurrentItem()==0){
+ viewPagerSlides.setCurrentItem(1);
+ }else if(viewPagerSlides.getCurrentItem()==1){
+ viewPagerSlides.setCurrentItem(2);
+ }else if(viewPagerSlides.getCurrentItem()==2){
+ viewPagerSlides.setCurrentItem(3);
+ }else if(viewPagerSlides.getCurrentItem()==3){
+ viewPagerSlides.setCurrentItem(4);
+ }else if(viewPagerSlides.getCurrentItem()==4){
+ viewPagerSlides.setCurrentItem(5);
+ }else {
+ viewPagerSlides.setCurrentItem(0);
+ }
+ }
+ });
+ }
+ }
+ @Override
+ public void onStart() {
+ super.onStart();
+ // Check if user is signed in.
+ progressDialog.show();
+ FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+ if(currentUser!=null)
+ {
+ Intent intent=new Intent(getApplicationContext(),Home.class);
+ startActivity(intent);
+
+intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_NEW_TASK);
+ finish();
+ progressDialog.dismiss();
+ }else if(currentUser==null){
+ progressDialog.dismiss();
+ }
+ }
+}
